@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abend-Check-in</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --surface2: #f3f2ef;
+    --border: rgba(0,0,0,0.12);
+    --border-mid: rgba(0,0,0,0.22);
+    --text: #1a1917;
+    --text2: #6b6a67;
+    --text3: #9e9d9a;
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --accent: #1a1917;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18181a;
+      --surface: #242427;
+      --surface2: #2e2e32;
+      --border: rgba(255,255,255,0.10);
+      --border-mid: rgba(255,255,255,0.20);
+      --text: #f0efeb;
+      --text2: #9e9d9a;
+      --text3: #6b6a67;
+      --accent: #f0efeb;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 620px;
+  }
+
+  .header {
+    margin-bottom: 2rem;
+  }
+
+  .time {
+    font-size: 13px;
+    color: var(--text3);
+    margin-bottom: 6px;
+    letter-spacing: 0.03em;
+  }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .sub {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .progress {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 2.5rem;
+  }
+
+  .dot {
+    height: 3px;
+    flex: 1;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.4s;
+  }
+
+  .dot.done { background: var(--accent); }
+
+  .phase { display: none; }
+  .phase.active { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-label {
+    font-size: 12px;
+    color: var(--text3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.65;
+    resize: none;
+  }
+
+  textarea::placeholder { color: var(--text3); }
+
+  .tag-area { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .tag {
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .tag:hover { border-color: var(--border-mid); color: var(--text); }
+  .tag.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 18px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-mid);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  button:hover { background: var(--surface2); }
+  button:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover { opacity: 0.85; background: var(--accent); }
+
+  .ai-box {
+    background: var(--surface2);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    min-height: 80px;
+    margin-bottom: 1rem;
+  }
+
+  .closed-item {
+    border-left: 2px solid var(--border-mid);
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    background: var(--surface);
+  }
+
+  .closed-item .item-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text3);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--text2);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .err { font-size: 13px; color: #c0392b; margin-top: 8px; }
+
+  .streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text3);
+    padding: 4px 10px;
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+  }
+
+  .divider {
+    height: 0.5px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="time" id="time-display"></div>
+    <div class="streak" id="streak-display"></div>
+  </div>
+
+  <div class="progress" id="progress">
+    <div class="dot done" id="d0"></div>
+    <div class="dot" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+    <div class="dot" id="d4"></div>
+  </div>
+
+  <div class="phase active" id="p0">
+    <h1>Abend-Check-in</h1>
+    <p class="sub" style="margin-bottom: 1.5rem;">Was ist noch im Kopf? Alles raus – unstrukturiert ist okay.</p>
+    <div class="card">
+      <div class="card-label">Brain Dump</div>
+      <textarea id="dump" rows="6" placeholder="Projekte, Workshops, offene Fragen, Dinge die du nicht vergessen willst..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="next(0)">Weiter →</button>
+    </div>
+    <div class="err" id="err0"></div>
+  </div>
+
+  <div class="phase" id="p1">
+    <h1>Wie fühlt es sich an?</h1>
+    <p class="sub" style="margin-bottom: 1.5rem;">Wähle was zutrifft – mehrere möglich.</p>
+    <div class="card">
+      <div class="tag-area" id="tags">
+        <span class="tag" onclick="tog(this)">dringlich</span>
+        <span class="tag" onclick="tog(this)">unklar</span>
+        <span class="tag" onclick="tog(this)">kontrollierbar</span>
+        <span class="tag" onclick="tog(this)">delegierbar</span>
+        <span class="tag" onclick="tog(this)">morgen lösbar</span>
+        <span class="tag" onclick="tog(this)">nächste Woche</span>
+        <span class="tag" onclick="tog(this)">kann warten</span>
+        <span class="tag" onclick="tog(this)">läuft eigentlich</span>
+        <span class="tag" onclick="tog(this)">braucht Entscheidung</span>
+        <span class="tag" onclick="tog(this)">kreist nur im Kopf</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button onclick="back(1)">Zurück</button>
+      <button class="btn-primary" onclick="runAnalysis()">KI analysiert →</button>
+    </div>
+    <div class="err" id="err1"></div>
+  </div>
+
+  <div class="phase" id="p2">
+    <h1>Analyse</h1>
+    <p class="sub" style="margin-bottom: 1.5rem;">Was wirklich offen ist – und was nicht.</p>
+    <div class="ai-box" id="analysis-box"><span class="spinner"></span> Analysiere...</div>
+    <div class="btn-row">
+      <button onclick="back(2)">Zurück</button>
+      <button class="btn-primary" onclick="next(2)">Nächste Schritte →</button>
+    </div>
+  </div>
+
+  <div class="phase" id="p3">
+    <h1>Nächste Schritte</h1>
+    <p class="sub" style="margin-bottom: 1.5rem;">Für jedes offene Thema: ein konkreter erster Schritt morgen.</p>
+    <div class="card">
+      <div class="card-label">Morgen</div>
+      <textarea id="steps" rows="5" placeholder="z.B. Workshop-Agenda bis 10 Uhr, dann Lukas anrufen wegen Projekt X..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button onclick="back(3)">Zurück</button>
+      <button class="btn-primary" onclick="closeOut()">Abschließen →</button>
+    </div>
+  </div>
+
+  <div class="phase" id="p4">
+    <h1>Abgeschlossen.</h1>
+    <p class="sub" style="margin-bottom: 1.5rem;">Das war heute. Morgen ist morgen.</p>
+    <div id="closed-items"></div>
+    <div class="divider"></div>
+    <div class="ai-box" id="closing-box"><span class="spinner"></span> Schreibe Abschluss...</div>
+    <div class="btn-row" style="margin-top: 1.5rem;">
+      <button class="btn-primary" onclick="reset()">Neuer Abend →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://api.anthropic.com/v1/messages';
+const MODEL = 'claude-sonnet-4-20250514';
+let S = { dump: '', tags: [], steps: '', analysis: '' };
+
+function updateTime() {
+  const now = new Date();
+  const opts = { weekday: 'long', day: 'numeric', month: 'long' };
+  document.getElementById('time-display').textContent = now.toLocaleDateString('de-DE', opts);
+}
+
+function updateStreak() {
+  const key = 'checkin_streak';
+  const today = new Date().toDateString();
+  let data = JSON.parse(localStorage.getItem(key) || '{"last":"","count":0}');
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  if (data.last === today) {
+    // already counted today
+  } else if (data.last === yesterday.toDateString()) {
+    data.count++;
+    data.last = today;
+  } else {
+    data.count = 1;
+    data.last = today;
+  }
+  localStorage.setItem(key, JSON.stringify(data));
+  const el = document.getElementById('streak-display');
+  el.textContent = data.count > 1 ? data.count + ' Abende in Folge' : 'Erster Abend';
+}
+
+function setDots(n) {
+  for (let i = 0; i <= 4; i++) {
+    document.getElementById('d' + i).className = 'dot' + (i <= n ? ' done' : '');
+  }
+}
+
+function showPhase(n) {
+  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+  document.getElementById('p' + n).classList.add('active');
+  setDots(n);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function next(from) {
+  if (from === 0) {
+    const v = document.getElementById('dump').value.trim();
+    if (!v) { document.getElementById('err0').textContent = 'Bitte erst etwas eingeben.'; return; }
+    document.getElementById('err0').textContent = '';
+    S.dump = v;
+  }
+  if (from === 2) { S.steps = ''; }
+  showPhase(from + 1);
+}
+
+function back(from) { showPhase(from - 1); }
+
+function tog(el) { el.classList.toggle('on'); }
+
+async function callClaude(system, user) {
+  const r = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, max_tokens: 1000, system, messages: [{ role: 'user', content: user }] })
+  });
+  if (!r.ok) throw new Error('Status ' + r.status);
+  const d = await r.json();
+  return d.content.find(b => b.type === 'text')?.text || '';
+}
+
+async function runAnalysis() {
+  S.tags = Array.from(document.querySelectorAll('.tag.on')).map(t => t.textContent);
+  document.getElementById('err1').textContent = '';
+  showPhase(2);
+  const box = document.getElementById('analysis-box');
+  box.innerHTML = '<span class="spinner"></span> Analysiere...';
+  try {
+    const sys = 'Du bist ein präziser Gedanken-Sortierer. Trenne klar: Was ist wirklich offen und braucht morgen Aufmerksamkeit? Was läuft eigentlich oder ist nicht dringlich? Sei direkt, kein Softening, keine Floskeln. Max 150 Wörter. Antworte auf Deutsch.';
+    const msg = `Was beschäftigt:\n${S.dump}\n\nCharakter: ${S.tags.join(', ') || 'keine Angabe'}`;
+    S.analysis = await callClaude(sys, msg);
+    box.textContent = S.analysis;
+  } catch(e) {
+    box.textContent = '';
+    document.getElementById('err1').textContent = 'Verbindungsfehler – bitte erneut versuchen.';
+    showPhase(1);
+  }
+}
+
+async function closeOut() {
+  S.steps = document.getElementById('steps').value.trim();
+  showPhase(4);
+
+  const ci = document.getElementById('closed-items');
+  ci.innerHTML = `<div class="closed-item"><span class="item-label">Heute</span>${S.dump.replace(/\n/g,'<br>')}</div>`;
+  if (S.steps) ci.innerHTML += `<div class="closed-item"><span class="item-label">Morgen</span>${S.steps.replace(/\n/g,'<br>')}</div>`;
+
+  const cb = document.getElementById('closing-box');
+  cb.innerHTML = '<span class="spinner"></span> Schreibe Abschluss...';
+  try {
+    const sys = 'Schreibe 2 kurze, sachliche Sätze als Abschluss des Abends. Kein Lob, keine Motivation, keine Floskeln. Bestätige: das ist erledigt für heute, morgen gibt es einen Plan. Antworte auf Deutsch.';
+    const msg = `Themen: ${S.dump}\nAnalyse: ${S.analysis}\nPlan: ${S.steps || 'nicht notiert'}`;
+    cb.textContent = await callClaude(sys, msg);
+  } catch(e) {
+    cb.textContent = 'Der Abend ist abgeschlossen. Die Gedanken sind notiert, der Rest ist morgen.';
+  }
+
+  updateStreak();
+}
+
+function reset() {
+  S = { dump: '', tags: [], steps: '', analysis: '' };
+  document.getElementById('dump').value = '';
+  document.getElementById('steps').value = '';
+  document.querySelectorAll('.tag.on').forEach(t => t.classList.remove('on'));
+  showPhase(0);
+}
+
+updateTime();
+updateStreak();
+</script>
+</body>
+</html>
